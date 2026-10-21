@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Universal Reader Assistant (Web)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>Universal Reader Assistant</h1>
+    <div id="status" class="status" role="status" aria-live="polite">Not connected</div>
+    <div class="actions">
+      <button id="btn-connect" class="primary">Connect reader</button>
+      <button id="btn-demo">Demo mode</button>
+      <button id="btn-disconnect" hidden>Disconnect</button>
+    </div>
+  </header>
+  <div id="banner" class="banner" role="alert" hidden></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="read" aria-selected="true">Read</button>
+    <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+    <button role="tab" data-tab="memory" aria-selected="false">Tag memory</button>
+    <button role="tab" data-tab="log" aria-selected="false">Log</button>
+  </nav>
+  <main>
+    <section id="tab-read" role="tabpanel"></section>
+    <section id="tab-settings" role="tabpanel" hidden></section>
+    <section id="tab-memory" role="tabpanel" hidden></section>
+    <section id="tab-log" role="tabpanel" hidden></section>
+  </main>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
