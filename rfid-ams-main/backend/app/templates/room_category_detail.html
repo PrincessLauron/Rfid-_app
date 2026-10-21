@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ category_name }}</h1>
+    <p>{{ room.name }} category view with sortable assets.</p>
+  </div>
+</div>
+
+<div class="inline">
+  <span class="helper">Sort by:</span>
+  <a href="?sort_by=name&order={{ 'desc' if sort_by == 'name' and order == 'asc' else 'asc' }}"><button type="button" class="secondary">Name</button></a>
+  <a href="?sort_by=mr&order={{ 'desc' if sort_by == 'mr' and order == 'asc' else 'asc' }}"><button type="button" class="secondary">MR</button></a>
+  <a href="?sort_by=status&order={{ 'desc' if sort_by == 'status' and order == 'asc' else 'asc' }}"><button type="button" class="secondary">Status</button></a>
+  <a href="?sort_by=tag&order={{ 'desc' if sort_by == 'tag' and order == 'asc' else 'asc' }}"><button type="button" class="secondary">Tag</button></a>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Asset ID</th><th>Name</th><th>MR Holder</th><th>Status</th><th>Tag Status</th><th>Location</th></tr>
+  </thead>
+  <tbody>
+    {% for a in assets %}
+    <tr>
+      <td>{{ a.public_id }}</td>
+      <td>{{ a.name }}</td>
+      <td>{{ a.mr_label }}</td>
+      <td>{{ a.status }}</td>
+      <td>{{ a.tag_status }}</td>
+      <td>{{ a.location }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No assets under this category.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

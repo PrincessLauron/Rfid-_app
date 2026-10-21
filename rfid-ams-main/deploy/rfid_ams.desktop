@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=RFID AMS
+Comment=RFID Control App
+Exec=/opt/rfid-ams/.venv/bin/python -m rfid_app.app
+Terminal=false
+Categories=Utility;
+
+

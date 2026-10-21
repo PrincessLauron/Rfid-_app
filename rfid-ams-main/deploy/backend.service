@@ -1,0 +1,17 @@
+[Unit]
+Description=RFID AMS Backend (Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/rfid-ams
+EnvironmentFile=-/etc/rfid-ams/rfid-ams.env
+Environment=AMS_SQLITE_PATH=/opt/rfid-ams/backend/app/app.db
+ExecStart=/opt/rfid-ams/.venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
+

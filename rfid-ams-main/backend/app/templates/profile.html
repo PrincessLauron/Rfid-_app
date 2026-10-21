@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Profile</h1>
+    <p>Account details and access role for this workstation.</p>
+  </div>
+</div>
+
+<section class="profile-grid">
+  <article class="card">
+    <h3>User</h3>
+    <p><strong>Username:</strong> {{ user.username }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Status:</strong> {{ 'Active' if user.is_active else 'Inactive' }}</p>
+  </article>
+  <article class="card">
+    <h3>Access</h3>
+    <p><strong>Roles:</strong> {% for r in user.roles %}{{ r.name }} {% endfor %}</p>
+    <p><strong>Created:</strong> {{ user.created_at }}</p>
+    <p><strong>Last Login:</strong> {{ last_login or 'No login logs yet' }}</p>
+  </article>
+</section>
+{% endblock %}

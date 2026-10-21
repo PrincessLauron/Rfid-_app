@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>MR Workflow for {{ asset.name }}</h1>
+    <p>Device: {{ public_asset_id }}{% if asset.room %} • {{ asset.room.name }}{% endif %}</p>
+  </div>
+</div>
+
+<form method="post" action="/memorandum-receipts/workflow/{{ asset.id }}/save" class="card">
+  <input type="hidden" name="existing_mr_id" value="{{ existing_mr.id if existing_mr else '' }}">
+
+  <h3>Step 1: Select or Add Recipient</h3>
+  <div class="inline">
+    <label>Existing Name</label>
+    <select name="assignee_id">
+      <option value="">- Select -</option>
+      {% for person in assignees %}
+      <option value="{{ person.id }}" {% if existing_mr and existing_mr.assignee_id == person.id %}selected{% endif %}>{{ person.name }}{% if person.initials %} ({{ person.initials }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="inline">
+    <label>Or Add New Name</label>
+    <input name="new_assignee_name" placeholder="Full name">
+    <label>Initials</label>
+    <input name="new_assignee_initials" placeholder="e.g. JDC">
+  </div>
+
+  <h3 style="margin-top: 18px;">Step 2: Memorandum Receipt Details</h3>
+  <div class="inline">
+    <label>MR Reference No.</label>
+    <input name="reference_no" value="{{ existing_mr.reference_no if existing_mr else '' }}" required>
+    <label>Issued By</label>
+    <input name="issued_by" value="{{ existing_mr.issued_by if existing_mr else '' }}">
+    <label>Issued Date</label>
+    <input type="date" name="issued_at" value="{{ existing_mr.issued_at.date() if existing_mr and existing_mr.issued_at else '' }}" required>
+    <label>Status</label>
+    <select name="status">
+      <option value="active" {% if not existing_mr or existing_mr.status == 'active' %}selected{% endif %}>active</option>
+      <option value="returned" {% if existing_mr and existing_mr.status == 'returned' %}selected{% endif %}>returned</option>
+    </select>
+    <label>Room</label>
+    <select name="room_id">
+      <option value="">-</option>
+      {% for r in rooms %}
+      <option value="{{ r.id }}" {% if (existing_mr and existing_mr.room_id == r.id) or (not existing_mr and asset.room_id == r.id) %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <label>Assets covered by this MR (whole unit)</label>
+  <select name="asset_ids" multiple size="8" style="width:100%; margin-top: 6px;">
+    {% for a in all_assets %}
+    {% set selected = (a.id == asset.id) or (existing_mr and a in existing_mr.assets) %}
+    <option value="{{ a.id }}" {% if selected %}selected{% endif %}>#{{ a.id }} — {{ a.name }}{% if a.room %} ({{ a.room.name }}){% endif %}</option>
+    {% endfor %}
+  </select>
+  <p class="helper">Primary selected device is always included. Add peripherals in this same MR if needed.</p>
+
+  <label>Notes</label>
+  <input name="notes" value="{{ existing_mr.notes if existing_mr else '' }}" placeholder="Optional remarks">
+
+  <div style="margin-top: 10px;" class="inline">
+    <button type="submit">{{ 'Update MR' if existing_mr else 'Create MR' }}</button>
+    <a href="/memorandum-receipts"><button type="button" class="secondary">Back</button></a>
+  </div>
+</form>
+{% endblock %}

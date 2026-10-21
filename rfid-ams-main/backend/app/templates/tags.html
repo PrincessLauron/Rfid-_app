@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Tag Linking</h1>
+    <p>Optional mapping layer for scanner automation. Primary workflow remains asset management.</p>
+  </div>
+</div>
+
+<form method="post" action="/ui/tags/create" class="inline">
+  <label>Tag Code</label>
+  <input name="epc" required>
+  <label>Label</label>
+  <input name="label">
+  <label>Status</label>
+  <select name="status">
+    <option value="active">active</option>
+    <option value="inactive">inactive</option>
+  </select>
+  <label>Asset</label>
+  <select name="asset_id">
+    <option value="">-</option>
+    {% for a in assets %}
+    <option value="{{ a.id }}">{{ a.name }} (#{{ a.id }})</option>
+    {% endfor %}
+  </select>
+  <label>Room</label>
+  <select name="room_id">
+    <option value="">-</option>
+    {% for r in rooms %}
+    <option value="{{ r.id }}">{{ r.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Save Link</button>
+</form>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>Tag Code</th><th>Label</th><th>Status</th><th>Asset</th><th>Room</th><th>Created</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for t in tags %}
+    <tr>
+      <td>{{ t.id }}</td>
+      <td>{{ t.epc }}</td>
+      <td>{{ t.label or '' }}</td>
+      <td>{{ t.status }}</td>
+      <td>{{ t.asset_id or '' }}</td>
+      <td>{{ t.room_id or '' }}</td>
+      <td>{{ t.created_at }}</td>
+      <td>
+        <form method="post" action="/ui/tags/{{ t.id }}/delete" onsubmit="return confirm('Delete this link?');">
+          <button type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8">No tag links yet</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

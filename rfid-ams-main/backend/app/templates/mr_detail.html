@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ mr.reference_no }}</h1>
+    <p>Memorandum Receipt — {{ asset_count }} asset{{ 's' if asset_count != 1 else '' }} covered</p>
+  </div>
+  {% if can_edit %}
+  <a href="/memorandum-receipts/{{ mr.id }}/edit" class="btn-toolbar btn-toolbar-primary">
+    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+    Edit MR
+  </a>
+  {% endif %}
+</div>
+
+<section class="metrics metrics-compact">
+  <div class="stat-card">
+    <div class="stat-icon stat-icon-teal">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 3.5L18.5 8H14V3.5zM6 20V4h7v5h5v11H6z"/></svg>
+    </div>
+    <div class="stat-body">
+      <span class="stat-label">Reference No.</span>
+      <span class="stat-value small">{{ mr.reference_no }}</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon stat-icon-blue">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </div>
+    <div class="stat-body">
+      <span class="stat-label">Issued To</span>
+      <span class="stat-value small">{{ issued_to }}</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon stat-icon-green">
+      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+    </div>
+    <div class="stat-body">
+      <span class="stat-label">Status</span>
+      <span class="stat-value small">
+        {% if mr.status == 'active' %}
+          <span class="badge badge-low"><span class="badge-dot badge-dot-green"></span> Active</span>
+        {% else %}
+          <span class="badge badge-neutral"><span class="badge-dot badge-dot-amber"></span> {{ mr.status|title }}</span>
+        {% endif %}
+      </span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon stat-icon-amber">
+      <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+    </div>
+    <div class="stat-body">
+      <span class="stat-label">Issued Date</span>
+      <span class="stat-value small">{{ mr.issued_at.strftime('%Y-%m-%d') if mr.issued_at else '-' }}</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon stat-icon-teal">
+      <svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+    </div>
+    <div class="stat-body">
+      <span class="stat-label">Assets</span>
+      <span class="stat-value small">{{ asset_count }}</span>
+    </div>
+  </div>
+</section>
+
+{% if mr.issued_by or mr.notes or room_name != '-' %}
+<div class="card" style="max-width:720px;margin-bottom:24px;">
+  <div class="form-grid">
+    {% if mr.issued_by %}
+    <div class="form-field">
+      <label>Issued By</label>
+      <p style="margin:0;color:var(--text-primary);">{{ mr.issued_by }}</p>
+    </div>
+    {% endif %}
+    {% if room_name != '-' %}
+    <div class="form-field">
+      <label>Room</label>
+      <p style="margin:0;color:var(--text-primary);">{{ room_name }}</p>
+    </div>
+    {% endif %}
+    {% if mr.notes %}
+    <div class="form-field" style="grid-column:1/-1;">
+      <label>Notes</label>
+      <p style="margin:0;color:var(--text-primary);">{{ mr.notes }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<h2 class="panel-title">Assets Covered</h2>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Asset ID</th>
+      <th>Name</th>
+      <th>Category</th>
+      <th>Serial No.</th>
+      <th>Room</th>
+      <th>Status</th>
+      <th>Specs</th>
+      <th>RFID Tag</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in asset_rows %}
+    <tr>
+      <td class="mono">{{ a.public_id }}</td>
+      <td>{{ a.name }}</td>
+      <td><span class="badge badge-component">{{ a.category }}</span></td>
+      <td class="mono">{{ a.serial_number }}</td>
+      <td>{{ a.room_name }}</td>
+      <td>
+        <span class="badge {% if a.status == 'in_service' %}badge-low{% elif a.status == 'maintenance' %}badge-medium{% elif a.status == 'condemned' %}badge-high{% else %}badge-info{% endif %}">
+          {{ a.status_display }}
+        </span>
+      </td>
+      <td class="cell-specs">{{ a.specs }}</td>
+      <td>{{ a.tag_status }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);">No assets assigned to this MR yet. <a href="/memorandum-receipts/{{ mr.id }}/edit">Edit this MR</a> to add assets.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div style="margin-top:16px;">
+  <a href="/memorandum-receipts" style="color:var(--accent);text-decoration:none;font-size:13px;">&larr; Back to all Memorandum Receipts</a>
+</div>
+{% endblock %}

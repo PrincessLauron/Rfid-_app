@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# ── Build query-string fragment carrying current filters + sort ── #}
+{% set qs_filters %}{% if filters.f_category %}&f_category={{ filters.f_category }}{% endif %}{% if filters.f_room %}&f_room={{ filters.f_room }}{% endif %}{% if filters.f_status %}&f_status={{ filters.f_status }}{% endif %}{% if filters.f_mr %}&f_mr={{ filters.f_mr }}{% endif %}{% endset %}
+
+{# ── Helper macro: sortable column header ── #}
+{% macro sort_th(col, label) %}
+{% set next_order = 'desc' if (sort_by == col and order == 'asc') else 'asc' %}
+{% set is_sorted = sort_by == col %}
+<th class="sortable-th {{ 'sorted' if is_sorted }}">
+  <a href="?sort_by={{ col }}&order={{ next_order }}{{ '&q=' + q if q }}{{ qs_filters }}">
+    {{ label }}
+    {% if is_sorted %}
+      {% if order == 'asc' %}
+      <svg class="sort-icon" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z"/></svg>
+      {% else %}
+      <svg class="sort-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+      {% endif %}
+    {% else %}
+      <svg class="sort-icon" viewBox="0 0 24 24"><path d="M7 10l5-5 5 5H7zm0 4l5 5 5-5H7z"/></svg>
+    {% endif %}
+  </a>
+</th>
+{% endmacro %}
+
+<div class="page-header">
+  <div>
+    <h1>Inventory</h1>
+    <p>{{ inventory_rows|length }} assets across {{ rooms|length }} laboratories</p>
+  </div>
+</div>
+
+{# ═══════ Toolbar: Search + Filters + Export + Import ═══════ #}
+<form method="get" id="inventoryForm" class="inventory-toolbar">
+  {# Carry sort state #}
+  <input type="hidden" name="sort_by" value="{{ sort_by }}">
+  <input type="hidden" name="order" value="{{ order }}">
+
+  {# Row 1: Search + actions #}
+  <div class="toolbar-top">
+    <div class="toolbar-search">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 001.48-5.34C15.36 5.28 12.58 3 9.25 3 5.53 3 2.5 6.03 2.5 9.75S5.53 16.5 9.25 16.5c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6.25 0C6.81 14 4.5 11.69 4.5 9.25S6.81 4.5 9.25 4.5 14 6.81 14 9.25 11.69 14 9.25 14z"/></svg>
+      <input name="q" value="{{ q }}" placeholder="Search name, serial…" type="search" autocomplete="off">
+    </div>
+    <div class="toolbar-actions">
+      <a href="/ui/assets/export.csv" hx-boost="false" class="btn-toolbar">
+        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-14 9v2h14v-2H5z"/></svg>
+        Export CSV
+      </a>
+    </div>
+  </div>
+
+  {# Row 2: Filter dropdowns #}
+  <div class="toolbar-filters">
+    <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--text-muted);flex-shrink:0"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+
+    <select name="f_category" class="filter-select" onchange="this.form.submit()">
+      <option value="">All Categories</option>
+      {% for cat in category_options %}
+      <option value="{{ cat }}" {{ 'selected' if filters.f_category == cat }}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="f_room" class="filter-select" onchange="this.form.submit()">
+      <option value="">All Rooms</option>
+      {% for rm in room_options %}
+      <option value="{{ rm }}" {{ 'selected' if filters.f_room == rm }}>{{ rm }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="f_status" class="filter-select" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      {% for st in status_options %}
+      <option value="{{ st|lower|replace(' ','_') }}" {{ 'selected' if filters.f_status == st|lower|replace(' ','_') }}>{{ st }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="f_mr" class="filter-select" onchange="this.form.submit()">
+      <option value="">All MR</option>
+      {% for mr in mr_options %}
+      <option value="{{ mr }}" {{ 'selected' if filters.f_mr == mr }}>{{ mr }}</option>
+      {% endfor %}
+    </select>
+
+    {% if active_filter_count > 0 %}
+    <a href="/inventory?sort_by={{ sort_by }}&order={{ order }}{{ '&q=' + q if q }}" class="filter-clear" title="Clear all filters">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      Clear ({{ active_filter_count }})
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+{# ── Bulk Upload (separate form for multipart) ── #}
+<form method="post" action="/inventory/bulk-edit.csv" enctype="multipart/form-data"
+      id="bulkUploadForm" style="display:none;">
+  <input type="file" name="file" accept=".csv" required id="bulkFile"
+         onchange="document.getElementById('bulkUploadForm').submit();">
+</form>
+
+{# ═══════ Bulk action bar (hidden until selections) ═══════ #}
+<div class="bulk-bar" id="bulkBar">
+  <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--c3)"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+  <span><span class="count" id="selectedCount">0</span> selected</span>
+  <div class="bulk-actions">
+    <button type="button" class="btn-toolbar btn-toolbar-primary" onclick="bulkEditSelected()">
+      <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.42l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      Edit Selected
+    </button>
+    <button type="button" class="btn-toolbar" onclick="clearSelection()">Clear</button>
+  </div>
+</div>
+
+{# ═══════ Inventory table ═══════ #}
+<div class="table-wrap">
+<table id="inventoryTable">
+  <thead>
+    <tr>
+      <th class="check-col">
+        <input type="checkbox" class="row-checkbox" id="selectAll"
+               onchange="toggleSelectAll(this)" title="Select all">
+      </th>
+      {{ sort_th('id', 'ID') }}
+      {{ sort_th('name', 'Name') }}
+      {{ sort_th('category', 'Category') }}
+      {{ sort_th('room', 'Room') }}
+      {{ sort_th('status', 'Status') }}
+      <th>MR</th>
+      <th>Tag</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in inventory_rows %}
+    <tr data-id="{{ a.id }}">
+      <td class="check-col">
+        <input type="checkbox" class="row-checkbox row-select" value="{{ a.id }}"
+               onchange="updateBulkBar()">
+      </td>
+      <td class="mono">{{ a.public_id }}</td>
+      <td style="font-weight:600;">{{ a.name }}</td>
+      <td><span class="badge badge-component">{{ a.category }}</span></td>
+      <td>{{ a.room_name }}</td>
+      <td>
+        {% set st = a.status|lower|replace(' ','_') %}
+        {% if st == 'in_service' %}
+          <span class="badge badge-low"><span class="badge-dot badge-dot-green"></span> In Service</span>
+        {% elif st == 'condemned' %}
+          <span class="badge badge-high"><span class="badge-dot badge-dot-red"></span> Condemned</span>
+        {% elif st == 'transferred' %}
+          <span class="badge badge-info"><span class="badge-dot badge-dot-blue"></span> Transferred</span>
+        {% elif st == 'maintenance' %}
+          <span class="badge badge-medium"><span class="badge-dot badge-dot-amber"></span> Maintenance</span>
+        {% else %}
+          <span class="badge badge-neutral">{{ a.status_display }}</span>
+        {% endif %}
+      </td>
+      <td class="mono">{{ a.mr_label }}</td>
+      <td>
+        {% if a.tag_status == 'Tagged' %}
+          <span class="badge badge-low"><span class="badge-dot badge-dot-green"></span> Tagged</span>
+        {% else %}
+          <span class="badge badge-neutral">{{ a.tag_status }}</span>
+        {% endif %}
+      </td>
+      <td>
+        <button type="button" class="btn-edit" onclick="openEditAssetModal('/inventory/assets/{{ a.id }}/edit-modal?next=' + encodeURIComponent(location.pathname + location.search))">
+          <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.42l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          Edit
+        </button>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-muted);">No assets match the current filters.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{# ═══════ Recent Scan Sessions ═══════ #}
+<h2 class="panel-title">Recent Scan Sessions</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>ID</th><th>Room</th><th>Status</th><th>Started</th><th>Ended</th></tr>
+  </thead>
+  <tbody>
+    {% for s in sessions %}
+    <tr>
+      <td class="mono">{{ s.id }}</td>
+      <td>{{ s.room_id }}</td>
+      <td><span class="badge badge-neutral">{{ s.status }}</span></td>
+      <td>{{ s.started_at }}</td>
+      <td>{{ s.ended_at or '' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">No scan sessions yet</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script>
+/* ── Row selection ── */
+function toggleSelectAll(master) {
+  document.querySelectorAll('.row-select').forEach(cb => { cb.checked = master.checked; });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const checks = document.querySelectorAll('.row-select:checked');
+  const bar = document.getElementById('bulkBar');
+  const cnt = document.getElementById('selectedCount');
+  const master = document.getElementById('selectAll');
+  const total = document.querySelectorAll('.row-select');
+
+  cnt.textContent = checks.length;
+  bar.classList.toggle('visible', checks.length > 0);
+
+  if (checks.length === 0) { master.checked = false; master.indeterminate = false; }
+  else if (checks.length === total.length) { master.checked = true; master.indeterminate = false; }
+  else { master.checked = false; master.indeterminate = true; }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-select').forEach(cb => { cb.checked = false; });
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  updateBulkBar();
+}
+
+function bulkEditSelected() {
+  const ids = [...document.querySelectorAll('.row-select:checked')].map(cb => cb.value);
+  if (ids.length === 0) return;
+  openEditAssetModal('/inventory/assets/' + ids[0] + '/edit-modal?next=' + encodeURIComponent(window.location.pathname + window.location.search));
+}
+</script>
+<!-- ADD THIS HERE -->
+
+<div id="editAssetModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" id="editAssetModalContent">
+
+    <div style="padding:40px;text-align:center;">
+      Loading...
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+  // OPEN EDIT MODAL
+  function openEditAssetModal(url) {
+
+    console.log("Opening modal:", url);
+
+    var modal = document.getElementById('editAssetModal');
+    var content = document.getElementById('editAssetModalContent');
+
+    // show modal
+    modal.style.display = 'flex';
+
+    // loading state
+    content.innerHTML = `
+      <div style="padding:40px;text-align:center;">
+        Loading...
+      </div>
+    `;
+
+    // fetch edit form
+    fetch(url)
+      .then(function(response) {
+
+        if (!response.ok) {
+          throw new Error("Failed to load modal");
+        }
+
+        return response.text();
+      })
+
+      .then(function(html) {
+
+        content.innerHTML = html;
+
+      })
+
+      .catch(function(error) {
+
+        console.error(error);
+
+        content.innerHTML = `
+          <div style="padding:40px;text-align:center;color:red;">
+            Failed to load edit form.
+          </div>
+        `;
+      });
+  }
+
+
+  // CLOSE EDIT MODAL
+  function closeEditAssetModal() {
+
+    document.getElementById('editAssetModal').style.display = 'none';
+
+  }
+
+
+  // CLICK OUTSIDE TO CLOSE
+  document.addEventListener('DOMContentLoaded', function() {
+
+    var modal = document.getElementById('editAssetModal');
+
+    modal.addEventListener('click', function(e) {
+
+      if (e.target === modal) {
+
+        closeEditAssetModal();
+
+      }
+
+    });
+
+  });
+
+</script>
+{% endblock %}

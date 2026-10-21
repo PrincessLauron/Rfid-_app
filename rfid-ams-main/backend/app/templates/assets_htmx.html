@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Assets</h1>
+    <p>Manage laboratory inventory records. RFID links stay in backend operations.</p>
+  </div>
+</div>
+
+<form class="inline" hx-post="/ui/assets/create" hx-target="#assets-tbody" hx-swap="afterbegin">
+  <label>Name</label>
+  <input name="name" required>
+  <label>Serial Number</label>
+  <input name="serial_number">
+  <label>Location</label>
+  <input name="location">
+  <label>Status</label>
+  <input name="status" placeholder="in_service / maintenance / retired">
+  <label>Component</label>
+  <input name="component_type" placeholder="pc/keyboard/mouse/cables">
+  <label>Room</label>
+  <select name="room_id">
+    <option value="">-</option>
+    {% for room in rooms %}
+    <option value="{{ room.id }}">{{ room.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Add Asset</button>
+</form>
+
+<div class="inline">
+  <a href="/ui/assets/export.csv"><button type="button" class="secondary">Export Inventory CSV</button></a>
+  <form method="post" action="/ui/assets/import.csv" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">Import Inventory CSV</button>
+  </form>
+</div>
+<p class="helper">CSV columns: name, serial_number, component_type, status, location, room_name</p>
+
+<h2 class="panel-title">Asset List</h2>
+<table>
+  <thead>
+    <tr><th>ID</th><th>Name</th><th>Serial</th><th>Location</th><th>Status</th><th>Component</th><th>Room</th></tr>
+  </thead>
+  <tbody id="assets-tbody">
+    {% for a in assets %}
+      {% include "partials/asset_row.html" %}
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

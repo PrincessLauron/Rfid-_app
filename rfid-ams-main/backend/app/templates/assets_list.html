@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Assets</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <h1>Assets</h1>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Serial</th><th>EPC</th><th>Location</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for a in assets %}
+        <tr>
+          <td>{{ a.id }}</td>
+          <td>{{ a.name }}</td>
+          <td>{{ a.serial_number }}</td>
+          <td>{{ a.tag_epc }}</td>
+          <td>{{ a.location }}</td>
+          <td>{{ a.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+  </html>
+
+

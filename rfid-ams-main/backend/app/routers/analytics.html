@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  /* =========================
+      ANALYTICS PAGE - CLEAN DESIGN
+  ========================== */
+  .analytics-wrapper {
+    padding: 0;
+    max-width: 100%;
+    background: #f8f9fa;
+    min-height: 100vh;
+  }
+
+  /* =========================
+      TOP HEADER SECTION
+  ========================== */
+  .analytics-header {
+    background: #ffffff;
+    padding: 20px 32px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .portal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .portal-title .icon {
+    font-size: 24px;
+  }
+
+  /* =========================
+      TAB NAVIGATION
+  ========================== */
+  .tab-navigation {
+    display: flex;
+    gap: 12px;
+  }
+
+  .tab-button {
+    background: transparent;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+
+  .tab-button:hover {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .tab-button.active {
+    background: #059669;
+    color: #ffffff;
+    border-color: #059669;
+  }
+
+  .new-btn {
+    background: #059669;
+    color: #ffffff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.2s;
+  }
+
+  .new-btn:hover {
+    background: #047857;
+  }
+
+  /* =========================
+      MAIN CONTENT
+  ========================== */
+  .analytics-content {
+    padding: 32px;
+  }
+
+  .chart-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0 0;
+    display: block;
+  }
+
+  .volume-label {
+    font-size: 13px;
+    color: #6b7280;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* =========================
+      BAR CHART LAYOUT
+  ========================== */
+  .chart-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .bar-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bar-label {
+    min-width: 120px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4b5563;
+    text-align: right;
+  }
+
+  .bar-container {
+    flex: 1;
+    height: 32px;
+    background: #e5e7eb;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 8px;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 12px;
+    position: relative;
+  }
+
+  .bar-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    margin-left: 12px;
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* =========================
+      RESPONSIVE
+  ========================== */
+  @media (max-width: 768px) {
+    .analytics-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .header-left {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .tab-navigation {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .analytics-content {
+      padding: 16px;
+    }
+
+    .chart-section {
+      padding: 16px;
+    }
+
+    .bar-label {
+      min-width: 100px;
+    }
+  }
+</style>
+
+<div class="analytics-wrapper">
+
+  <!-- HEADER SECTION -->
+  <div class="analytics-header">
+    <div class="header-left">
+      <h1 class="portal-title">
+        <span class="icon">📊</span>
+        CCS LAMS Analytics
+      </h1>
+      
+      <div class="tab-navigation">
+        <button class="tab-button active">Asset Analytics</button>
+        <button class="tab-button">Room Analytics</button>
+        <button class="tab-button">Scan History</button>
+      </div>
+    </div>
+
+    <button class="new-btn">+ New Report</button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="analytics-content">
+
+    <!-- Assets by Room Chart -->
+    <div class="chart-section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">📦 Assets by Laboratory Room</h2>
+          <p class="section-subtitle">Total asset distribution mapped across laboratory spaces</p>
+        </div>
+        <span class="volume-label">Volume distribution</span>
+      </div>
+
+      <div class="chart-wrapper" id="assetsPerRoomContainer">
+        <div style="text-align: center; padding: 40px; color: #9ca3af;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Scan Activity Chart -->
+    <div class="chart-section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">📈 Scan Activity by Day of Week</h2>
+          <p class="section-subtitle">Total scan sessions per day — Current month</p>
+        </div>
+      </div>
+
+      <div class="chart-wrapper" id="scanActivityContainer">
+        <div style="text-align: center; padding: 40px; color: #9ca3af;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Top Assets Chart -->
+    <div class="chart-section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">🔝 Most Frequently Scanned Assets</h2>
+          <p class="section-subtitle">Which devices are being accessed most</p>
+        </div>
+      </div>
+
+      <div class="chart-wrapper" id="topAssetsContainer">
+        <div style="text-align: center; padding: 40px; color: #9ca3af;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Asset Status Chart -->
+    <div class="chart-section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">✅ Asset Status Distribution</h2>
+          <p class="section-subtitle">Current status of all tracked assets</p>
+        </div>
+      </div>
+
+      <div class="chart-wrapper" id="assetStatusContainer">
+        <div style="text-align: center; padding: 40px; color: #9ca3af;">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  // Format large numbers
+  function formatNumber(num) {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k';
+    }
+    return num.toString();
+  }
+
+  // Create horizontal bar item HTML
+  function createBarItem(label, value, maxValue) {
+    const percentage = (value / maxValue) * 100;
+    return `
+      <div class="bar-item">
+        <div class="bar-label">${label}</div>
+        <div class="bar-container">
+          <div class="bar-fill" style="width: ${percentage}%"></div>
+        </div>
+        <div class="bar-value">${formatNumber(value)}</div>
+      </div>
+    `;
+  }
+
+  // Load Assets per Room
+  async function loadAssetsPerRoom() {
+    try {
+      const response = await fetch('/api/analytics/assets-by-room');
+      const data = await response.json();
+
+      const container = document.getElementById('assetsPerRoomContainer');
+      if (!data.counts || data.counts.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No data available</div>';
+        return;
+      }
+
+      const maxCount = Math.max(...data.counts);
+      let html = '<div class="chart-wrapper">';
+      
+      data.rooms.forEach((room, index) => {
+        html += createBarItem(room, data.counts[index], maxCount);
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    } catch (error) {
+      console.error('Error loading assets per room:', error);
+      document.getElementById('assetsPerRoomContainer').innerHTML = 
+        '<div style="text-align: center; padding: 40px; color: #dc2626;">Error loading data</div>';
+    }
+  }
+
+  // Load Scan Activity
+  async function loadScanActivity() {
+    try {
+      const response = await fetch('/api/analytics/scan-activity-by-day');
+      const data = await response.json();
+
+      const container = document.getElementById('scanActivityContainer');
+      if (!data.data || data.data.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No data available</div>';
+        return;
+      }
+
+      const maxCount = Math.max(...data.data);
+      let html = '<div class="chart-wrapper">';
+      
+      data.labels.forEach((day, index) => {
+        html += createBarItem(day, data.data[index], maxCount);
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    } catch (error) {
+      console.error('Error loading scan activity:', error);
+      document.getElementById('scanActivityContainer').innerHTML = 
+        '<div style="text-align: center; padding: 40px; color: #dc2626;">Error loading data</div>';
+    }
+  }
+
+  // Load Top Assets
+  async function loadTopAssets() {
+    try {
+      const response = await fetch('/api/analytics/most-scanned-assets');
+      const data = await response.json();
+
+      const container = document.getElementById('topAssetsContainer');
+      if (!data.reads || data.reads.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No data available</div>';
+        return;
+      }
+
+      const maxReads = Math.max(...data.reads);
+      let html = '<div class="chart-wrapper">';
+      
+      data.assets.forEach((asset, index) => {
+        const shortName = asset.length > 30 ? asset.substring(0, 27) + '...' : asset;
+        html += createBarItem(shortName, data.reads[index], maxReads);
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    } catch (error) {
+      console.error('Error loading top assets:', error);
+      document.getElementById('topAssetsContainer').innerHTML = 
+        '<div style="text-align: center; padding: 40px; color: #dc2626;">Error loading data</div>';
+    }
+  }
+
+  // Load Asset Status
+  async function loadAssetStatus() {
+    try {
+      const response = await fetch('/api/analytics/asset-status');
+      const data = await response.json();
+
+      const container = document.getElementById('assetStatusContainer');
+      if (!data.data || data.data.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No data available</div>';
+        return;
+      }
+
+      const maxCount = Math.max(...data.data);
+      let html = '<div class="chart-wrapper">';
+      
+      data.labels.forEach((status, index) => {
+        html += createBarItem(status, data.data[index], maxCount);
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    } catch (error) {
+      console.error('Error loading asset status:', error);
+      document.getElementById('assetStatusContainer').innerHTML = 
+        '<div style="text-align: center; padding: 40px; color: #dc2626;">Error loading data</div>';
+    }
+  }
+
+  // Initialize all charts
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAssetsPerRoom();
+    loadScanActivity();
+    loadTopAssets();
+    loadAssetStatus();
+  });
+</script>
+
+{% endblock %}
+
+
+
+
+{% endblock %}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+      body { font-family: ui-sans-serif, system-ui, -apple-system; margin: 2rem; }
+      .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; max-width: 680px; }
+      .muted { color: #6b7280; }
+      a { color: #2563eb; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>RFID Asset Management</h1>
+      <p class="muted">Backend API is running.</p>
+      <ul>
+        <li><a href="/docs">OpenAPI Docs</a></li>
+        <li><a href="/redoc">ReDoc</a></li>
+        <li><a href="/health">Health Check</a></li>
+        <li><a href="/ui/assets">Assets (HTMX)</a></li>
+      </ul>
+    </div>
+  </body>
+  </html>
+
+

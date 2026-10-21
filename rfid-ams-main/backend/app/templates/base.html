@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{{ title or "CCS Laboratory Asset Management System" }}</title>
+
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+
+    <!-- ================= LAYOUT FIX (SAFE + STABLE) ================= -->
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+      }
+
+      .app-shell {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* ================= SIDEBAR ================= */
+      .sidebar {
+        width: 260px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+
+        overflow-y: auto;     /* ENABLE SCROLL */
+        overflow-x: hidden;
+
+        /* HIDE SCROLLBAR */
+        scrollbar-width: none;        /* Firefox */
+        -ms-overflow-style: none;     /* IE/Edge */
+      }
+
+      .sidebar::-webkit-scrollbar {
+        display: none; /* Chrome / Safari */
+      }
+
+      /* ================= MAIN CONTENT ================= */
+      main.content {
+        flex: 1;
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* ================= ICON SAFETY (prevents disappearing icons) ================= */
+      .menu a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .menu svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+
+  <body
+    hx-boost="true"
+    hx-target="main.content"
+    hx-select="main.content > *"
+    hx-swap="innerHTML transition:true"
+    hx-push-url="true"
+  >
+
+    <div class="app-shell">
+
+      <!-- ================= SIDEBAR (UNCHANGED STRUCTURE) ================= -->
+      <aside class="sidebar" id="sidebar">
+
+        <div class="brand">
+          <button class="sidebar-toggle" id="sidebarToggle" type="button">
+            <svg class="icon-expand" viewBox="0 0 24 24">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+            <svg class="icon-collapse" viewBox="0 0 24 24">
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+            </svg>
+          </button>
+
+          <div class="brand-text">
+            <h1>CCS LAMS</h1>
+            <p>CCS Laboratory Asset Management System</p>
+          </div>
+        </div>
+
+        <nav class="menu">
+          <a href="/dashboard" data-nav="/dashboard">
+            <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6zm10-10h8V3h-8v8z"/></svg>
+            <span class="nav-label">Laboratories</span>
+          </a>
+
+          <a href="/schedule" data-nav="/schedule">
+            <svg viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm12 18H5V9h14v11z"/></svg>
+            <span class="nav-label">Schedule</span>
+          </a>
+
+          <a href="/inventory" data-nav="/inventory">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 7h16v2H4v-2zm0 7h16v2H4v-2z"/></svg>
+            <span class="nav-label">Inventory</span>
+          </a>
+
+          <a href="/ui/tags" data-nav="/ui/tags">
+            <svg viewBox="0 0 24 24"><path d="M10.59 13.41l4.59-4.59a2 2 0 1 0-2.82-2.82l-4.59 4.59a2 2 0 0 0 0 2.82z"/></svg>
+            <span class="nav-label">Tag Linking</span>
+          </a>
+
+          <a href="/profile" data-nav="/profile">
+            <svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2-8 4.5V21h16v-2.5c0-2.5-3.6-4.5-8-4.5z"/></svg>
+            <span class="nav-label">Profile</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          {% if user %}
+          <div class="user-chip">
+            <span>{{ user.username }}</span>
+            <small>
+              {% for role in user.roles %}{{ role.name }} {% endfor %}
+            </small>
+          </div>
+          {% endif %}
+
+          <a class="btn-ghost" href="/logout" hx-boost="false">
+            <span class="nav-label">Logout</span>
+          </a>
+        </div>
+
+      </aside>
+
+      <!-- ================= MAIN CONTENT ================= -->
+      <main class="content">
+
+        {% if breadcrumbs %}
+        <nav class="breadcrumbs" aria-label="Breadcrumb">
+          {% for crumb in breadcrumbs %}
+            {% if crumb.href %}
+              <a href="{{ crumb.href }}">{{ crumb.label }}</a>
+            {% else %}
+              <span>{{ crumb.label }}</span>
+            {% endif %}
+            {% if not loop.last %} / {% endif %}
+          {% endfor %}
+        </nav>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+
+      </main>
+
+    </div>
+
+    <!-- ================= JS ================= -->
+    <script>
+      function markActiveNav() {
+        const path = window.location.pathname;
+
+        document.querySelectorAll('.menu a[data-nav]').forEach(a => {
+          const nav = a.getAttribute('data-nav');
+          const active = path === nav || path.startsWith(nav + '/');
+          a.classList.toggle('active', active);
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', markActiveNav);
+      document.body.addEventListener('htmx:afterSwap', markActiveNav);
+
+      /* SIDEBAR TOGGLE (kept safe) */
+      (function () {
+        const sidebar = document.getElementById('sidebar');
+        const btn = document.getElementById('sidebarToggle');
+        const key = 'sidebar_collapsed';
+
+        function apply(state) {
+          sidebar.classList.toggle('collapsed', state);
+        }
+
+        apply(localStorage.getItem(key) === '1');
+
+        btn.addEventListener('click', () => {
+          const state = sidebar.classList.toggle('collapsed');
+          localStorage.setItem(key, state ? '1' : '0');
+        });
+      })();
+    </script>
+
+  </body>
+</html>

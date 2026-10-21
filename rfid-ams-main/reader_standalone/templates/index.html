@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reader Monitor (Standalone)</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Standalone Reader Monitor</h1>
+    <p>Console for the M7E RFID reader on macOS and Raspberry Pi. Plug in the reader, click Connect to Reader, scan.</p>
+  </header>
+
+  <main class="shell">
+    <!-- Diagnostics banner — only visible when something is off -->
+    <section id="diagBanner" class="diag-banner" hidden>
+      <div class="diag-banner-body">
+        <strong id="diagTitle">Reader not detected</strong>
+        <ul id="diagIssues"></ul>
+      </div>
+      <button class="ghost" onclick="refreshDiagnostics()">Check again</button>
+    </section>
+
+    <section class="panel deck">
+      <div class="deck-head">
+        <div>
+          <h2>Reader Controls</h2>
+          <p id="deckSubtitle">Plug in the reader and press Connect. Settings apply once connected.</p>
+        </div>
+        <span id="status" class="status">Disconnected</span>
+      </div>
+
+      <div class="summary-strip">
+        <div class="summary-card">
+          <span>Port</span>
+          <strong id="metaPort">—</strong>
+        </div>
+        <div class="summary-card">
+          <span>Mode</span>
+          <strong id="metaMode">—</strong>
+        </div>
+        <div class="summary-card">
+          <span>RF</span>
+          <strong id="metaRf">—</strong>
+        </div>
+      </div>
+
+      <div class="control-stack">
+        <div class="control-section">
+          <div class="section-title">Connection</div>
+          <p class="section-hint" id="connectHint">One click. The app scans your USB-serial ports, finds the reader, and connects at the right baud rate.</p>
+          <div class="actions single-row">
+            <div class="actions-group">
+              <button id="connectAutoBtn" onclick="connectAuto()" class="primary">Connect to Reader</button>
+              <button id="disconnectBtn" onclick="disconnectReader()" class="ghost" hidden>Disconnect</button>
+            </div>
+            <div class="actions-group">
+              <button onclick="toggleAdvanced()" class="ghost" id="advancedToggle">Advanced</button>
+            </div>
+          </div>
+
+          <!-- Advanced: manual port + baud -->
+          <div id="advancedPanel" class="advanced-panel" hidden>
+            <div class="control-grid">
+              <div class="field field-wide">
+                <label for="portSelect">Port <span class="field-hint">pick a discovered port, or type a path / socket URL below</span></label>
+                <select id="portSelect" onchange="onPortSelectChange()"></select>
+                <input id="port" type="text" placeholder="/dev/cu.* · /dev/ttyUSB* · socket://host:9876" autocomplete="off" spellcheck="false" style="margin-top: 6px;" />
+                <datalist id="portList"></datalist>
+                <div class="field-hint" id="portListHint" style="margin-top: 4px;">Scanning serial ports…</div>
+              </div>
+              <div class="field">
+                <label for="baud">Baud</label>
+                <input id="baud" type="number" value="115200" />
+              </div>
+              <div class="field">
+                <label for="safe">Safety</label>
+                <label class="checkbox checkbox-card">
+                  <input id="safe" type="checkbox" checked />
+                  <span>Safe mode</span>
+                </label>
+              </div>
+              <div class="field field-wide">
+                <label for="skipHandshake">Connection mode</label>
+                <label class="checkbox checkbox-card">
+                  <input id="skipHandshake" type="checkbox" />
+                  <span>Skip handshake (raw mode) <span class="field-hint">— open port and start scanning without version probe or config commands. Use this if JADAK URA works but our handshake fails.</span></span>
+                </label>
+              </div>
+            </div>
+            <div class="actions single-row">
+              <div class="actions-group">
+                <button onclick="loadPorts()" class="ghost">Refresh Ports</button>
+                <button onclick="connectManual()" class="ghost">Connect (manual)</button>
+                <button onclick="connectRaw()">Connect Raw (no handshake)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-section" id="readerProfileSection">
+          <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+            <span>Scan</span>
+            <button onclick="toggleProfile()" class="ghost" id="profileToggleBtn" style="font-size: 0.85em; padding: 4px 10px;">Reader settings ▾</button>
+          </div>
+          <div class="actions single-row">
+            <div class="actions-group">
+              <button onclick="startScan()" class="primary">Start Scan</button>
+              <button onclick="stopScan()" class="ghost">Stop Scan</button>
+              <button onclick="clearAll()" class="ghost">Clear</button>
+            </div>
+          </div>
+          <div id="readerProfileFields" hidden style="margin-top: 12px;">
+            <div class="control-grid">
+              <div class="field">
+                <label for="mode">Mode</label>
+                <select id="mode">
+                  <option value="continuous">Continuous</option>
+                  <option value="single">Single</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="antenna">Antenna</label>
+                <select id="antenna">
+                  <option value="1">Port 1 (default)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="region">Region</label>
+                <select id="region">
+                  <option value="18" selected>Philippines (PH)</option>
+                  <option value="1">North America</option>
+                  <option value="255">Open</option>
+                  <option value="8">Europe</option>
+                  <option value="5">Japan</option>
+                  <option value="6">China</option>
+                  <option value="11">Australia</option>
+                  <option value="4">India</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="power">RF Power</label>
+                <input id="power" type="number" min="0" max="2700" step="50" value="2700" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Scanned Tags</h2>
+          <span class="panel-chip">Live inventory</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>EPC</th><th>RSSI</th><th>Count</th><th>First Seen</th><th>Last Seen</th></tr>
+          </thead>
+          <tbody id="tags"></tbody>
+        </table>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Serial Monitor <span class="panel-chip" id="dbgStatusChip">idle</span></h2>
+          <div class="actions-group" style="display:flex; gap:6px;">
+            <button onclick="copyLogs()" class="ghost">Copy</button>
+            <button onclick="dbgClear()" class="ghost">Clear</button>
+          </div>
+        </div>
+        <!-- Inline command bar: type hex, press Enter -->
+        <div style="display:flex; gap:6px; margin-bottom: 10px;">
+          <input id="dbgHexInput" type="text"
+                 placeholder="Type hex to send · e.g. FF 00 03 1D 0C  ·  Enter to send"
+                 autocomplete="off" spellcheck="false"
+                 style="flex:1;" />
+          <button onclick="dbgSendHex()" id="dbgSendBtn">Send</button>
+          <button onclick="dbgShortcut('version')" class="ghost" id="dbgVersionBtn">Version</button>
+          <button onclick="dbgShortcut('stop')" class="ghost" id="dbgStopBtn">Stop</button>
+        </div>
+        <pre id="logs" class="logs"></pre>
+        <p class="panel-note" id="dbgNote">
+          When the main reader is connected, anything you type here goes out on the same port.
+          TX/RX bytes are merged with the application logs above.
+        </p>
+      </article>
+    </section>
+  </main>
+
+<script>
+const PREF_PREFIX = 'readerStandalone.';
+
+async function post(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t);
+  }
+  return res.json();
+}
+
+function applyStateResponse(data) {
+  if (data && data.state) {
+    syncFormFromState(data.state);
+    render(data.state);
+  }
+}
+
+function getControl(id) {
+  return document.getElementById(id);
+}
+
+function savePreference(id, value) {
+  localStorage.setItem(PREF_PREFIX + id, String(value));
+}
+
+function restorePreferences() {
+  const ids = ['port', 'baud', 'mode', 'antenna', 'region', 'power', 'safe'];
+  for (const id of ids) {
+    const el = getControl(id);
+    const stored = localStorage.getItem(PREF_PREFIX + id);
+    if (stored === null || stored === undefined) continue;
+    if (el.type === 'checkbox') {
+      el.checked = stored === '1';
+    } else {
+      el.value = stored;
+    }
+  }
+}
+
+function installPreferenceListeners() {
+  const ids = ['port', 'baud', 'mode', 'antenna', 'region', 'power', 'safe'];
+  for (const id of ids) {
+    const el = getControl(id);
+    const eventName = el.type === 'text' || el.type === 'number' ? 'input' : 'change';
+    el.addEventListener(eventName, () => {
+      savePreference(id, el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
+      if (id === 'port') _portUserEdited = true;
+    });
+  }
+}
+
+function syncFormFromState(state) {
+  const map = {
+    port: state.port,
+    baud: state.baudrate,
+    mode: state.read_mode,
+    antenna: state.antenna_port,
+    region: state.region,
+    power: state.read_power,
+    safe: state.safe_mode,
+  };
+  for (const [id, value] of Object.entries(map)) {
+    if (value === undefined || value === null) continue;
+    const el = getControl(id);
+    if (!el) continue;
+    if (el.type === 'checkbox') {
+      el.checked = Boolean(value);
+    } else {
+      el.value = String(value);
+    }
+  }
+}
+
+function setConnectBusy(busy, labelBusy, labelIdle) {
+  const btn = document.getElementById('connectAutoBtn');
+  if (!btn) return;
+  btn.disabled = busy;
+  btn.textContent = busy ? (labelBusy || 'Connecting…') : (labelIdle || 'Connect to Reader');
+}
+
+async function connectAuto() {
+  setConnectBusy(true, 'Scanning ports…');
+  document.getElementById('status').textContent = 'Opening…';
+  try {
+    const data = await post('/api/connect_auto', {
+      safe_mode: getControl('safe').checked,
+      read_mode: getControl('mode').value,
+      antenna_port: Number(getControl('antenna').value || 1),
+      region: Number(getControl('region').value || 18),
+      read_power: Number(getControl('power').value || 2700),
+    });
+    if (data.selected) {
+      savePreference('port', data.selected.port);
+      savePreference('baud', data.selected.baudrate);
+    }
+    applyStateResponse(data);
+    await poll();
+    await refreshDiagnostics();
+  } catch (e) {
+    // Parse structured FastAPI error payload if present
+    let msg = e.message || String(e);
+    try {
+      const parsed = JSON.parse(msg);
+      if (parsed.detail && typeof parsed.detail === 'object' && parsed.detail.message) {
+        msg = parsed.detail.message;
+        if (Array.isArray(parsed.detail.attempts) && parsed.detail.attempts.length) {
+          msg += '\n\nTried:';
+          for (const a of parsed.detail.attempts) {
+            msg += `\n  ${a.port} @ ${a.baudrate} — ${a.ok ? 'OK' : (a.note || 'no response')}`;
+          }
+        }
+      }
+    } catch (_) {}
+    alert(msg);
+    await poll();
+    await refreshDiagnostics();
+  } finally {
+    setConnectBusy(false);
+  }
+}
+
+async function _doManualConnect(skipHandshake) {
+  const port = getControl('port').value;
+  if (!port) { alert('Enter a port path first.'); return; }
+  setConnectBusy(true, skipHandshake ? 'Opening (raw)…' : 'Opening…');
+  try {
+    savePreference('port', port);
+    savePreference('baud', getControl('baud').value);
+    savePreference('safe', getControl('safe').checked ? '1' : '0');
+    const data = await post('/api/connect', {
+      port: port,
+      baudrate: Number(getControl('baud').value || 115200),
+      safe_mode: getControl('safe').checked,
+      read_mode: getControl('mode').value,
+      antenna_port: Number(getControl('antenna').value || 1),
+      region: Number(getControl('region').value || 18),
+      read_power: Number(getControl('power').value || 2700),
+      skip_handshake: !!skipHandshake,
+    });
+    applyStateResponse(data);
+    await poll();
+    await refreshDiagnostics();
+  } catch (e) {
+    alert((skipHandshake ? 'Raw connect failed: ' : 'Connect failed: ') + e.message);
+    await poll();
+  } finally {
+    setConnectBusy(false);
+  }
+}
+
+async function connectManual() {
+  // Honor the "Skip handshake" checkbox if it's checked
+  const skip = !!(document.getElementById('skipHandshake') || {}).checked;
+  await _doManualConnect(skip);
+}
+
+async function connectRaw() {
+  // Force raw mode regardless of the checkbox
+  await _doManualConnect(true);
+}
+
+function toggleAdvanced() {
+  const panel = document.getElementById('advancedPanel');
+  if (!panel) return;
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) loadPorts();
+}
+
+async function disconnectReader() {
+  try {
+    const data = await post('/api/disconnect');
+    applyStateResponse(data);
+    await poll();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function startScan() {
+  try {
+    const data = await post('/api/start', { read_mode: getControl('mode').value });
+    applyStateResponse(data);
+    await poll();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function stopScan() {
+  try {
+    const data = await post('/api/stop');
+    applyStateResponse(data);
+    await poll();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function clearAll() {
+  try {
+    const data = await post('/api/clear');
+    applyStateResponse(data);
+    await poll();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function sendCmd(cmd) { try { await post('/api/send', { command: cmd }); } catch (e) { alert(e.message); } }
+async function requestVersion() { try { await post('/api/version'); } catch (e) { alert(e.message); } }
+async function sendCustom() {
+  const cmd = document.getElementById('customCmd').value || '';
+  if (!cmd.trim()) return;
+  try { await post('/api/send', { command: cmd.trim() }); } catch (e) { alert(e.message); }
+}
+
+async function copyLogs() {
+  const text = document.getElementById('logs').textContent || '';
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
+let _portsLastOk = 0;
+// Remember if the user has deliberately typed into #port; if so we stop
+// overwriting it on the 2.5s auto-refresh.
+let _portUserEdited = false;
+
+function onPortSelectChange() {
+  const sel = document.getElementById('portSelect');
+  const inp = document.getElementById('port');
+  if (!sel || !inp || !sel.value) return;
+  inp.value = sel.value;
+  _portUserEdited = true; // explicit pick counts as an edit
+  savePreference('port', sel.value);
+}
+
+async function loadPorts() {
+  try {
+    const res = await fetch('/api/ports', { cache: 'no-store' });
+    const data = await res.json();
+    _portsLastOk = Date.now();
+    const portInput  = document.getElementById('port');
+    const portSelect = document.getElementById('portSelect');
+    const portList   = document.getElementById('portList');
+    const hint       = document.getElementById('portListHint');
+    if (!portInput || !portSelect) return;
+    const existing = portInput.value;
+
+    // Build the ordered list: likely readers first (deduped by device),
+    // then everything else in rank order.
+    const ordered = [
+      ...(data.reader_candidates || []),
+      ...((data.ports || []).filter(p => p.category !== 'likely_reader')),
+    ];
+
+    // Populate the visible <select>
+    const prevSelect = portSelect.value;
+    portSelect.innerHTML = '';
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.textContent = ordered.length ? 'Pick a port…' : 'No serial ports detected';
+    placeholderOpt.disabled = true;
+    portSelect.appendChild(placeholderOpt);
+    for (const p of ordered) {
+      const opt = document.createElement('option');
+      opt.value = p.device;
+      const star = p.category === 'likely_reader' ? '★ ' : '';
+      const desc = (p.description && p.description !== 'n/a') ? ` — ${p.description}` : '';
+      opt.textContent = `${star}${p.device}${desc}`;
+      portSelect.appendChild(opt);
+    }
+    // Keep the user's prior selection if still available; otherwise fall back
+    // to the best reader candidate.
+    const best = (data.reader_candidates && data.reader_candidates[0]) || ordered[0];
+    if (prevSelect && ordered.some(p => p.device === prevSelect)) {
+      portSelect.value = prevSelect;
+    } else if (best) {
+      portSelect.value = best.device;
+    }
+
+    // Also keep the legacy datalist in sync (harmless, lets power users
+    // type-ahead into the input box too)
+    if (portList) {
+      portList.innerHTML = '';
+      for (const p of ordered) {
+        const opt = document.createElement('option');
+        opt.value = p.device;
+        portList.appendChild(opt);
+      }
+    }
+
+    // Auto-fill the text input IF:
+    //   - the user hasn't typed anything yet AND we have a best candidate, OR
+    //   - the input currently holds a "not_reader" (Bluetooth/debug) value
+    //     and a real reader candidate has now appeared — overwrite the stale
+    //     Bluetooth path so the user isn't locked to it.
+    const existingIsBadPort = existing && (data.ports || []).some(
+      p => p.device === existing && p.category === 'not_reader'
+    );
+    if (!_portUserEdited && best && (!existing || existingIsBadPort)) {
+      portInput.value = best.device;
+      savePreference('port', best.device);
+    }
+
+    // Update the hint line so the user can see the list is live
+    if (hint) {
+      const candCount = (data.reader_candidates || []).length;
+      const total = (data.ports || []).length;
+      if (candCount > 0) {
+        hint.textContent = `${total} port${total === 1 ? '' : 's'} · ${candCount} likely reader${candCount === 1 ? '' : 's'} · updated just now`;
+        hint.style.color = '';
+      } else if (total > 0) {
+        hint.textContent = `${total} port${total === 1 ? '' : 's'} · no CH340/USB-serial detected · updated just now`;
+        hint.style.color = '#b45309';
+      } else {
+        hint.textContent = 'No serial ports available · updated just now';
+        hint.style.color = '#b45309';
+      }
+    }
+  } catch (_) {
+    const hint = document.getElementById('portListHint');
+    if (hint) {
+      hint.textContent = 'Lost connection to the server — is uvicorn still running?';
+      hint.style.color = '#b45309';
+    }
+  }
+}
+
+// Periodically freshen the "Updated X ago" label even without a refetch
+function _tickPortHint() {
+  const hint = document.getElementById('portListHint');
+  if (!hint || !_portsLastOk) return;
+  const ageSec = Math.floor((Date.now() - _portsLastOk) / 1000);
+  if (ageSec <= 3) return; // "just now" recently set, leave alone
+  // Replace the trailing "· updated X" clause
+  const base = hint.textContent.replace(/ · updated .*/, '');
+  hint.textContent = `${base} · updated ${ageSec}s ago`;
+}
+
+async function refreshDiagnostics() {
+  try {
+    const res = await fetch('/api/diagnostics');
+    const diag = await res.json();
+    const banner = document.getElementById('diagBanner');
+    const title = document.getElementById('diagTitle');
+    const list = document.getElementById('diagIssues');
+    if (!banner || !title || !list) return;
+    list.innerHTML = '';
+    const issues = diag.issues || [];
+
+    // Hide the banner when the reader is healthy AND the UI is disconnected.
+    // Once connected we don't care about candidates; hide the banner.
+    const shouldShow = !diag.healthy && issues.length > 0;
+    banner.hidden = !shouldShow;
+    if (!shouldShow) return;
+
+    if (diag.healthy) {
+      title.textContent = `Reader detected (${(diag.reader_candidates || []).length} candidate${(diag.reader_candidates || []).length === 1 ? '' : 's'})`;
+    } else {
+      title.textContent = 'Reader not detected';
+    }
+    for (const msg of issues) {
+      const li = document.createElement('li');
+      li.textContent = msg;
+      list.appendChild(li);
+    }
+  } catch (_) {}
+}
+
+function renderStatus(state) {
+  const status = document.getElementById('status');
+  if (!status) return;
+  const cs = state.conn_state || (state.connected ? 'connected' : 'disconnected');
+  let cls = 'status';
+  let text = 'Disconnected';
+  switch (cs) {
+    case 'connected':
+      cls += state.scanning ? ' is-connected is-scanning' : ' is-connected is-idle';
+      text = state.scanning ? 'Connected • Scanning' : 'Connected • Idle';
+      break;
+    case 'opening':
+      cls += ' is-opening';
+      text = 'Opening…';
+      break;
+    case 'stale':
+      cls += ' is-stale';
+      text = 'Reader not responding';
+      break;
+    case 'lost':
+      cls += ' is-lost';
+      text = 'Connection lost';
+      break;
+    case 'disconnected':
+    default:
+      cls += ' is-disconnected';
+      text = 'Disconnected';
+  }
+  status.className = cls;
+  status.textContent = text;
+  status.title = state.conn_detail || '';
+}
+
+function render(state) {
+  renderStatus(state);
+
+  // Connect vs Disconnect button visibility
+  const connectBtn = document.getElementById('connectAutoBtn');
+  const disconnectBtn = document.getElementById('disconnectBtn');
+  if (connectBtn && disconnectBtn) {
+    const showDisconnect = state.connected || state.conn_state === 'stale' || state.conn_state === 'opening';
+    connectBtn.hidden = showDisconnect;
+    disconnectBtn.hidden = !showDisconnect;
+  }
+
+  // Disable Reader Profile section when not connected
+  const profileSection = document.getElementById('readerProfileSection');
+  if (profileSection) {
+    const interactive = profileSection.querySelectorAll('input, select, button');
+    interactive.forEach(el => { el.disabled = !state.connected; });
+    profileSection.style.opacity = state.connected ? '1' : '0.45';
+  }
+
+  document.getElementById('metaPort').textContent = state.port || '—';
+  document.getElementById('metaMode').textContent = (state.read_mode || 'continuous').toUpperCase();
+  document.getElementById('metaRf').textContent = `${state.read_power ?? 2000} / ${state.region ?? 1}`;
+
+  const tagsBody = document.getElementById('tags');
+  tagsBody.innerHTML = '';
+  if (state.tags && state.tags.length) {
+    for (const t of state.tags) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${t.epc}</td><td>${t.rssi ?? ''}</td><td>${t.count}</td><td>${t.first_seen}</td><td>${t.last_seen}</td>`;
+      tagsBody.appendChild(tr);
+    }
+  } else {
+    const tr = document.createElement('tr');
+    tr.className = 'empty-row';
+    tr.innerHTML = '<td colspan="5">No tags seen yet. Put a tag near the antenna, then start scanning.</td>';
+    tagsBody.appendChild(tr);
+  }
+
+  document.getElementById('logs').textContent = state.logs.join('\n');
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/state');
+    const state = await res.json();
+    render(state);
+  } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+// Debug Terminal — raw serial without the Mercury handshake
+// (Always-on. When the main reader is connected, sending writes through the
+//  same port; otherwise the panel can open its own session.)
+// ---------------------------------------------------------------------------
+let _dbgLastSeq = 0;
+let _dbgIsOpen = false;
+let _dbgShared = false;
+
+function toggleProfile() {
+  const fields = document.getElementById('readerProfileFields');
+  const btn = document.getElementById('profileToggleBtn');
+  if (!fields || !btn) return;
+  fields.hidden = !fields.hidden;
+  btn.textContent = fields.hidden ? 'Reader settings ▾' : 'Reader settings ▴';
+}
+
+// Update the inline command-bar status pill from the main reader state.
+// (TX/RX events are merged into the unified Serial Monitor by the backend
+// — no separate event log is needed in the UI.)
+function dbgRenderFromMainState(state) {
+  const chip = document.getElementById('dbgStatusChip');
+  const sendBtn = document.getElementById('dbgSendBtn');
+  const verBtn  = document.getElementById('dbgVersionBtn');
+  const stopBtn = document.getElementById('dbgStopBtn');
+  const hexIn   = document.getElementById('dbgHexInput');
+  const note    = document.getElementById('dbgNote');
+
+  const connected = !!(state && state.connected);
+
+  if (chip) {
+    if (connected) {
+      chip.textContent = `${state.port} @ ${state.baudrate}`;
+      chip.style.background = '#dbeafe';
+      chip.style.color = '#1e40af';
+    } else {
+      chip.textContent = 'idle';
+      chip.style.background = '';
+      chip.style.color = '';
+    }
+  }
+  for (const b of [sendBtn, verBtn, stopBtn, hexIn]) {
+    if (b) b.disabled = !connected;
+  }
+  if (note) {
+    note.textContent = connected
+      ? 'Connected — anything you type goes out on the wire. RX bytes are mirrored into the log when not scanning.'
+      : 'Connect the reader first. Then type hex here to send commands; TX/RX merge into the log below.';
+  }
+}
+
+async function dbgShortcut(name) {
+  try {
+    await post('/api/debug/send', { shortcut: name });
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function dbgSendHex() {
+  const inp = document.getElementById('dbgHexInput');
+  const hex = inp.value.trim();
+  if (!hex) return;
+  try {
+    await post('/api/debug/send', { hex });
+    inp.value = '';
+  } catch (e) {
+    alert('Send failed: ' + e.message);
+  }
+}
+
+async function dbgClear() {
+  try { await post('/api/clear'); } catch (_) {}
+}
+
+// Allow Enter in the hex input to fire Send
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('dbgHexInput');
+  if (inp) {
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && !inp.disabled) {
+        ev.preventDefault();
+        dbgSendHex();
+      }
+    });
+  }
+});
+
+setInterval(poll, 700);
+setInterval(refreshDiagnostics, 5000);
+setInterval(loadPorts, 2500);              // keep Advanced dropdown live for hot-plug
+setInterval(_tickPortHint, 1000);          // tick "updated Xs ago"
+restorePreferences();
+installPreferenceListeners();
+loadPorts();
+refreshDiagnostics();
+poll();
+</script>
+</body>
+</html>

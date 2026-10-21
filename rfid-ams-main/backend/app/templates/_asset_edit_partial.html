@@ -1,0 +1,59 @@
+<h3>Edit — {{ asset.name }}</h3>
+<p style="margin:0 0 16px;color:var(--text-muted);font-size:13px;">Update asset details, status, and location.</p>
+
+<form method="post" action="/inventory/assets/{{ asset.id }}/edit" hx-boost="false">
+  <input type="hidden" name="back_url" value="{{ back_url }}">
+
+  <div class="form-grid">
+    <div class="form-field">
+      <label for="edit_name">Name</label>
+      <input id="edit_name" name="name" value="{{ asset.name }}" required>
+    </div>
+    <div class="form-field">
+      <label for="edit_serial_number">Serial Number</label>
+      <input id="edit_serial_number" name="serial_number" value="{{ asset.serial_number or '' }}">
+    </div>
+    <div class="form-field">
+      <label for="edit_component_type">Component Type</label>
+      <select id="edit_component_type" name="component_type">
+        <option value="">— Select —</option>
+        {% for code, label in component_type_choices %}
+        <option value="{{ code }}" {% if asset.component_type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="edit_status">Status</label>
+      <select id="edit_status" name="status">
+        <option value="">— Select —</option>
+        {% for code, label in status_options %}
+        <option value="{{ code }}" {% if asset.status == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="edit_location">Location</label>
+      <input id="edit_location" name="location" value="{{ asset.location or '' }}">
+    </div>
+    <div class="form-field">
+      <label for="edit_room_id">Laboratory</label>
+      <select id="edit_room_id" name="room_id">
+        <option value="">— None —</option>
+        {% for r in rooms %}
+        <option value="{{ r.id }}" {% if asset.room_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-field" style="margin-top:14px;">
+    <label for="edit_specs">Specs / Details</label>
+    <textarea id="edit_specs" name="specs" rows="4" style="width:100%;">{{ asset.specs or '' }}</textarea>
+    <p class="helper">Example: Processor: M1 | RAM: 8GB | Storage: 256GB | Display: 24-inch Retina</p>
+  </div>
+
+  <div class="modal-actions">
+    <button type="button" class="btn-cancel" onclick="closeEditAssetModal()">Cancel</button>
+    <button type="submit">Save Changes</button>
+  </div>
+</form>

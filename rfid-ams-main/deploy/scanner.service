@@ -1,0 +1,15 @@
+[Unit]
+Description=RFID AMS Scanner Worker
+After=network.target backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/rfid-ams
+EnvironmentFile=-/etc/rfid-ams/rfid-ams.env
+ExecStart=/opt/rfid-ams/.venv/bin/python -m rfid_app.headless_scanner
+Restart=on-failure
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

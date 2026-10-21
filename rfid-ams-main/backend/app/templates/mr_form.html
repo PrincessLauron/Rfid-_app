@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ form_verb }}</h1>
+    <p>{% if mr %}Editing MR {{ mr.reference_no }}{% else %}Create a new Memorandum Receipt{% endif %}</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:720px;">
+<form method="post" action="{{ form_action }}" hx-boost="false">
+
+  <h3 style="margin:0 0 16px;">Recipient</h3>
+  <div class="form-grid">
+    <div class="form-field">
+      <label for="assignee_id">Existing Assignee</label>
+      <select name="assignee_id" id="assignee_id">
+        <option value="">— Select —</option>
+        {% for person in assignees %}
+        <option value="{{ person.id }}" {% if mr and mr.assignee_id == person.id %}selected{% endif %}>{{ person.name }}{% if person.initials %} ({{ person.initials }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="new_assignee_name">Or Add New Name</label>
+      <input name="new_assignee_name" id="new_assignee_name" placeholder="Full name">
+    </div>
+    <div class="form-field">
+      <label for="new_assignee_initials">Initials</label>
+      <input name="new_assignee_initials" id="new_assignee_initials" placeholder="e.g. JDC">
+    </div>
+  </div>
+
+  <hr class="tile-divider" style="margin:20px 0;">
+
+  <h3 style="margin:0 0 16px;">MR Details</h3>
+  <div class="form-grid">
+    <div class="form-field">
+      <label for="reference_no">Reference Number</label>
+      <input name="reference_no" id="reference_no" value="{{ mr.reference_no if mr else '' }}" required placeholder="e.g. MR-2026-001">
+    </div>
+    <div class="form-field">
+      <label for="issued_by">Issued By</label>
+      <input name="issued_by" id="issued_by" value="{{ mr.issued_by if mr and mr.issued_by else '' }}" placeholder="Name or office">
+    </div>
+    <div class="form-field">
+      <label for="issued_at">Issued Date</label>
+      <input type="date" name="issued_at" id="issued_at" value="{{ mr.issued_at.strftime('%Y-%m-%d') if mr and mr.issued_at else '' }}" required>
+    </div>
+    <div class="form-field">
+      <label for="mr_status">Status</label>
+      <select name="status" id="mr_status">
+        <option value="active" {% if not mr or mr.status == 'active' %}selected{% endif %}>Active</option>
+        <option value="returned" {% if mr and mr.status == 'returned' %}selected{% endif %}>Returned</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="room_id">Room</label>
+      <select name="room_id" id="room_id">
+        <option value="">— None —</option>
+        {% for r in rooms %}
+        <option value="{{ r.id }}" {% if mr and mr.room_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="notes">Notes</label>
+      <input name="notes" id="notes" value="{{ mr.notes if mr and mr.notes else '' }}" placeholder="Optional remarks">
+    </div>
+  </div>
+
+  <hr class="tile-divider" style="margin:20px 0;">
+
+  <h3 style="margin:0 0 10px;">Assets Covered</h3>
+  <p class="helper" style="margin-bottom:8px;">Select assets that this MR covers. Hold Ctrl/Cmd to select multiple.</p>
+  <select name="asset_ids" multiple size="10" style="width:100%;font-size:13px;">
+    {% for a in all_assets %}
+    {% set selected = mr and a in mr.assets %}
+    <option value="{{ a.id }}" {% if selected %}selected{% endif %}>#{{ a.id }} — {{ a.name }}{% if a.room %} ({{ a.room.name }}){% endif %}</option>
+    {% endfor %}
+  </select>
+
+  <div class="form-actions" style="margin-top:20px;">
+    <button type="submit">{{ form_verb }}</button>
+    <a href="/memorandum-receipts"><button type="button" class="secondary">Cancel</button></a>
+  </div>
+
+</form>
+</div>
+{% endblock %}

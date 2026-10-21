@@ -1,0 +1,9 @@
+<tr>
+  <td>{{ a.id }}</td>
+  <td>{{ a.name }}</td>
+  <td>{{ a.serial_number }}</td>
+  <td>{{ a.location }}</td>
+  <td>{{ a.status }}</td>
+  <td>{{ a.component_type or '' }}</td>
+  <td>{{ a.room.name if a.room else (a.room_id or '') }}</td>
+</tr>
